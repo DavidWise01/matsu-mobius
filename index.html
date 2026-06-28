@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>matsu · the form is helical, the meaning is Möbius</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a0814;--teal:#46d6c8;--blue:#5b8cff;--amber:#ff8a3d;--gold:#ffd27a;
+    --text:#ece6f5;--dim:#9a93b5;--line:#ece6f51a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:var(--ink);color:var(--text);font-family:'Space Mono',monospace;overflow:hidden;
+    background-image:radial-gradient(circle at 50% 38%, #1c1436 0%, #0e0a1d 46%, #070510 100%);}
+  #gl{position:fixed;inset:0;display:block;z-index:0;touch-action:none}
+
+  .ui{position:fixed;inset:0;z-index:1;pointer-events:none}
+  .ui > *{pointer-events:auto}
+
+  .title{position:absolute;top:30px;left:30px;max-width:62vw}
+  .eyebrow{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+  .title h1{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(21px,3.6vw,34px);line-height:1.14;color:var(--text);letter-spacing:-.01em}
+  .title h1 .f{color:var(--teal)} .title h1 .m{color:var(--amber);font-style:italic}
+
+  .word{position:absolute;right:34px;bottom:128px;text-align:right;max-width:48vw}
+  .kanji{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(64px,15vw,128px);line-height:.85;
+    color:var(--gold);text-shadow:0 0 34px #ff8a3d55;transition:color .5s, text-shadow .5s}
+  .roma{font-family:'Fraunces',serif;font-style:italic;font-size:clamp(18px,3vw,26px);color:var(--text);margin-top:8px}
+  .gloss{font-size:13px;color:var(--dim);margin-top:12px;line-height:1.6;min-height:42px;transition:color .4s}
+  .gloss b{color:var(--amber);font-weight:700;transition:color .5s}
+  .gloss.back b{color:var(--teal)}
+  .seal{font-size:11px;color:#6f6a86;margin-top:10px;letter-spacing:.04em}
+
+  .controls{position:absolute;left:30px;bottom:30px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .btn{font-family:'Space Mono',monospace;font-size:12px;padding:9px 13px;border:1px solid var(--line);border-radius:8px;
+    background:#13102288;color:var(--text);cursor:pointer;letter-spacing:.03em;backdrop-filter:blur(6px)}
+  .btn:hover{border-color:var(--teal)} .btn.on{border-color:var(--amber);color:var(--gold)} .btn:active{transform:scale(.97)}
+  .hint{font-size:11px;color:#6f6a86;letter-spacing:.04em}
+
+  .flag{position:absolute;right:34px;bottom:30px;max-width:min(420px,70vw);font-size:11.5px;line-height:1.62;color:var(--dim);
+    text-align:right;border-right:2px solid var(--amber);padding-right:14px}
+  .flag b{color:var(--amber);font-weight:700}
+
+  @media (max-width:680px){
+    .title{max-width:84vw;top:22px;left:20px}
+    .word{right:20px;bottom:150px;max-width:74vw}
+    .controls{left:20px;bottom:20px}
+    .flag{display:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="ui">
+  <div class="title">
+    <div class="eyebrow">form · meaning · one surface</div>
+    <h1>The form is <span class="f">helical</span>.<br>The meaning is <span class="m">Möbius</span>.</h1>
+  </div>
+
+  <div class="word">
+    <div class="kanji" id="kanji">松</div>
+    <div class="roma">matsu</div>
+    <div class="gloss" id="gloss"><b>pine</b> — the reading looking <b style="color:inherit">back</b></div>
+    <div class="seal">one word · one surface · the sense inverts at the pivot</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn on" id="bSpin">⊙ spin</button>
+    <button class="btn" id="bEdge">trace the edge</button>
+    <span class="hint" id="hint">drag to turn it</span>
+  </div>
+
+  <div class="flag">
+    <b>the honest seam:</b> what you see is the <b style="color:var(--teal)">form</b> — one strand, one half-twist, geometry you can rotate. The <b>Möbius</b> part is the sense-flip itself: both readings live in the one word at once. The travelling spark sequences what language holds simultaneously — a crutch for an atemporal thing.
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const canvas = document.getElementById("gl");
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
+camera.position.set(0, 1.7, 6.4);
+camera.lookAt(0,0,0);
+
+const group = new THREE.Group();
+scene.add(group);
+
+// ---- Möbius geometry: cool teal->blue form, igniting amber at the seam (the pivot) ----
+const R=2.25, HW=0.72, UN=260, VN=22;
+const cTeal=new THREE.Color(0x46d6c8), cBlue=new THREE.Color(0x5b8cff), cAmber=new THREE.Color(0xff8a3d);
+function surf(u,v){
+  const c=Math.cos(u/2), s=Math.sin(u/2), r=R+v*c;
+  return [r*Math.cos(u), r*Math.sin(u), v*s];
+}
+const pos=[], col=[], idx=[];
+for(let i=0;i<=UN;i++){
+  const u=i/UN*Math.PI*2;
+  const d=Math.min(u, Math.PI*2-u);              // angular distance to the seam at u=0
+  const warm=Math.exp(-(d*d)/0.10);              // narrow warm band = the pivot
+  for(let j=0;j<=VN;j++){
+    const v=(j/VN-0.5)*2*HW;
+    const p=surf(u,v); pos.push(p[0],p[1],p[2]);
+    const base=cTeal.clone().lerp(cBlue, j/VN);
+    const cc=base.lerp(cAmber, Math.min(warm*1.05,1));
+    col.push(cc.r,cc.g,cc.b);
+  }
+}
+for(let i=0;i<UN;i++) for(let j=0;j<VN;j++){
+  const a=i*(VN+1)+j, b=a+(VN+1), c=a+1, d=b+1;
+  idx.push(a,b,d, a,d,c);
+}
+const geo=new THREE.BufferGeometry();
+geo.setAttribute("position", new THREE.Float32BufferAttribute(pos,3));
+geo.setAttribute("color", new THREE.Float32BufferAttribute(col,3));
+geo.setIndex(idx); geo.computeVertexNormals();
+const mat=new THREE.MeshStandardMaterial({vertexColors:true, side:THREE.DoubleSide,
+  metalness:0.35, roughness:0.42, emissive:0x110a22, emissiveIntensity:0.6});
+const strip=new THREE.Mesh(geo, mat); group.add(strip);
+
+// faint wire overlay for the helical read
+const wire=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0xffffff, wireframe:true, transparent:true, opacity:0.045}));
+group.add(wire);
+
+// ---- the single EDGE (proves one-sidedness): boundary v=+HW traced u:0->4π ----
+const edgePts=[];
+for(let i=0;i<=UN*2;i++){
+  const u=i/(UN*2)*Math.PI*4;          // twice around = one closed edge
+  const p=surf(u, HW); edgePts.push(new THREE.Vector3(p[0],p[1],p[2]));
+}
+const edgeGeo=new THREE.BufferGeometry().setFromPoints(edgePts);
+const edgeMat=new THREE.LineBasicMaterial({color:0xffd27a, transparent:true, opacity:0.95});
+const edgeLine=new THREE.Line(edgeGeo, edgeMat);
+edgeGeo.setDrawRange(0,0); group.add(edgeLine);
+
+// ---- the kakekotoba traveller: rides the surface, sense flips at the pivot ----
+const trav=new THREE.Mesh(new THREE.SphereGeometry(0.12,20,20),
+  new THREE.MeshBasicMaterial({color:0xffe7c9}));
+group.add(trav);
+const travLight=new THREE.PointLight(0xffb060, 1.5, 6); group.add(travLight);
+
+// ---- lights ----
+scene.add(new THREE.AmbientLight(0x6a6a9a, 0.7));
+const key=new THREE.DirectionalLight(0x9fd0ff, 0.9); key.position.set(3,5,4); scene.add(key);
+const seamLight=new THREE.PointLight(0xff8a3d, 2.2, 7);
+{const p=surf(0,0); seamLight.position.set(p[0],p[1],p[2]); group.add(seamLight);}
+
+// ---- state ----
+let spin=!reduce, tracing=false, edgeProg=0, tU=0, lastSign=1;
+const kanji=document.getElementById("kanji"), gloss=document.getElementById("gloss");
+function setReading(forward){
+  if(forward){ kanji.textContent="待つ"; kanji.style.color="#ff8a3d"; kanji.style.textShadow="0 0 34px #ff8a3d66";
+    gloss.className="gloss"; gloss.innerHTML='<b>to wait</b> — the reading looking <b>forward</b>'; }
+  else { kanji.textContent="松"; kanji.style.color="#ffd27a"; kanji.style.textShadow="0 0 34px #46d6c855";
+    gloss.className="gloss back"; gloss.innerHTML='<b>pine</b> — the reading looking <b>back</b>'; }
+}
+
+// ---- drag to rotate ----
+let drag=false, px=0, py=0, ry=0.4, rx=-0.5, vy=0, vx=0;
+function down(e){drag=true; const t=e.touches?e.touches[0]:e; px=t.clientX; py=t.clientY; document.getElementById("hint").textContent="";}
+function move(e){ if(!drag)return; const t=e.touches?e.touches[0]:e; vy=(t.clientX-px)*0.008; vx=(t.clientY-py)*0.008; ry+=vy; rx+=vx; rx=Math.max(-1.3,Math.min(1.3,rx)); px=t.clientX; py=t.clientY; if(e.cancelable)e.preventDefault(); }
+function up(){drag=false;}
+canvas.addEventListener("mousedown",down); addEventListener("mousemove",move); addEventListener("mouseup",up);
+canvas.addEventListener("touchstart",down,{passive:false}); canvas.addEventListener("touchmove",move,{passive:false}); addEventListener("touchend",up);
+
+document.getElementById("bSpin").onclick=function(){spin=!spin; this.classList.toggle("on",spin); this.textContent=spin?"⊙ spin":"▷ paused";};
+document.getElementById("bEdge").onclick=function(){tracing=!tracing; this.classList.toggle("on",tracing);
+  if(tracing){edgeProg=0; this.textContent="hide edge"; document.getElementById("hint").textContent="one edge — it goes round twice";}
+  else{edgeGeo.setDrawRange(0,0); this.textContent="trace the edge"; document.getElementById("hint").textContent="";}};
+
+function resize(){const w=innerWidth,h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();}
+addEventListener("resize",resize); resize();
+
+let t=0;
+function loop(){
+  requestAnimationFrame(loop); t+=0.016;
+  if(spin && !drag) ry += 0.0045;
+  if(!drag){ry+=vy*0.0; } // inertia off for clarity
+  group.rotation.y = ry; group.rotation.x = rx;
+
+  // traveller
+  if(!reduce){ tU += 0.013; if(tU>Math.PI*4) tU-=Math.PI*4; }
+  const tv = HW*0.86;
+  const p = surf(tU, tv);
+  trav.position.set(p[0],p[1],p[2]); travLight.position.set(p[0],p[1],p[2]);
+  const sign = Math.cos(tU/2) >= 0 ? 1 : -1;       // which face = which reading
+  if(sign!==lastSign){ lastSign=sign; setReading(sign<0); }
+  // pulse the seam light as the traveller passes the pivot
+  const dpiv = Math.min(Math.abs(tU%(Math.PI*2)), Math.PI*2-Math.abs(tU%(Math.PI*2)));
+  seamLight.intensity = 2.0 + Math.exp(-(dpiv*dpiv)/0.05)*3.0;
+
+  // edge trace
+  if(tracing){ edgeProg=Math.min(edgeProg+ (reduce?16:9), edgePts.length); edgeGeo.setDrawRange(0, Math.floor(edgeProg)); }
+
+  renderer.render(scene,camera);
+}
+loop();
+</script>
+</body>
+</html>
